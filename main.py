@@ -1,9 +1,15 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 import httpx
+import base64
 import os
 
 app = FastAPI()
+templates = Jinja2Templates(directory="templates")
+#app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Config CORS
 app.add_middleware(
@@ -14,22 +20,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-TORRENTIO_ADDON_URL = os.getenv('TORRENTIO_ADDON_URL')
+# Config page
+@app.get('/', response_class=HTMLResponse)
+@app.get('/configure', response_class=HTMLResponse)
+async def configure(request: Request):
+    response = templates.TemplateResponse("configure.html", {"request": request})
+    return response
 
-@app.get('/manifest.json')
-async def get_manifest():
+
+# Manifest endpoint
+@app.get('/{addon_url}/manifest.json')
+async def get_manifest(addon_url: str):
+    addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.get(f"{TORRENTIO_ADDON_URL}/manifest.json")
+        response = await client.get(f"{addon_url}/manifest.json")
         manifest = response.json()
 
     manifest['name'] = 'Torrentio+ RD'
     return manifest
 
 
-@app.get('/stream/{type}/{id}.json')
-async def get_stream(type: str, id: str):
+# Stream filter
+@app.get('/{addon_url}/stream/{type}/{id}.json')
+async def get_stream(addon_url: str, type: str, id: str):
+    addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.get(f"{TORRENTIO_ADDON_URL}/stream/{type}/{id}.json")
+        response = await client.get(f"{addon_url}/stream/{type}/{id}.json")
         full_streams = response.json()
 
         # Filter streams
@@ -47,6 +63,7 @@ async def get_stream(type: str, id: str):
     return full_streams
 
 
+# Debrid checker
 async def is_cached(stream: dict) -> bool:
     async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
         response = await client.head(stream['url'])
@@ -57,7 +74,12 @@ async def is_cached(stream: dict) -> bool:
             return False
 
 
-
+# Url decoder
+def decode_base64_url(encoded_url):
+    padding = '=' * (-len(encoded_url) % 4)
+    encoded_url += padding
+    decoded_bytes = base64.b64decode(encoded_url)
+    return decoded_bytes.decode('utf-8')
 
 if __name__ == '__main__':
     import uvicorn
