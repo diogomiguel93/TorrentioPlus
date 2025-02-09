@@ -47,15 +47,19 @@ async def get_stream(addon_url: str, type: str, id: str):
     async with httpx.AsyncClient(timeout=30) as client:
         response = await client.get(f"{addon_url}/stream/{type}/{id}.json")
         full_streams = response.json()
-
+        print(len(full_streams))
         # Filter streams
         streams = []
+        check_list = []
         for stream in full_streams.get('streams', {}):
-            if 'ilCorSaRoNeRo' in stream['title'] or '🇮🇹' in stream['title']:
-                if 'download' in stream['name']:
+            if 'ilCorSaRoNeRo' in stream.get('description', '') or '🇮🇹' in stream.get('description', '') or \
+            'ilCorSaRoNeRo' in stream.get('title', '') or '🇮🇹' in stream.get('title', ''):
+
+                if '⏳' in stream['name'] or 'download' in stream['name']:
                     if await is_cached(stream):
-                        stream['name'] = stream['name'].replace('RD download', 'RD+ (checked)')
+                        stream['name'] = stream['name'].replace('⏳', '⚡⏳').replace('RD download', 'RD+')
                         streams.append(stream)
+                        check_list.append(stream)
                 else:
                     streams.append(stream)
 
@@ -65,10 +69,10 @@ async def get_stream(addon_url: str, type: str, id: str):
 
 # Debrid checker
 async def is_cached(stream: dict) -> bool:
-    async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+    async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
         response = await client.head(stream['url'])
         print(response.headers)
-        if response.headers['Server'] == 'Lity 2.0':
+        if 'real-debrid' in response.headers['location']:
             return True
         else:
             return False
