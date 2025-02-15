@@ -8,10 +8,22 @@ import httpx
 import base64
 import asyncio
 import rd
+import re
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 #app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+resolution_relevance = [
+    '2160p',
+    '4k',
+    '1440p',
+    '2k',
+    '1080p',
+    '720p',
+    '480p'
+]
 
 # Config CORS
 app.add_middleware(
@@ -49,23 +61,37 @@ async def get_stream(addon_url: str, type: str, id: str):
     async with httpx.AsyncClient(timeout=60) as client:
         response = await client.get(f"{addon_url}/stream/{type}/{id}.json")
         full_streams = response.json()
-        print(len(full_streams))
+        
         # Filter streams
         streams = []
         check_list = []
         for stream in full_streams.get('streams', {}):
-            if 'ilCorSaRoNeRo' in stream.get('description', stream.get('title')) or '🇮🇹' in stream.get('description', stream.get('title')):
-                if '⏳' in stream['name'] or 'download' in stream['name']:
+            if 'ilCorSaRoNeRo' in stream['title'] or '🇮🇹' in stream['title']:
+                if 'download' in stream['name']:
                     check_list.append(stream)
                     if await is_cached(stream):
-                        stream['name'] = stream['name'].replace('⏳', '⚡⏳').replace('RD download', 'RD++ 🇮🇹')
+                        stream['name'] = stream['name'].replace('RD download', 'RD+')
+                        stream['name'], stream['title'], stream['video_size'], stream['resolution'] = format_stream(stream)
                         streams.append(stream)
                 else:
-                    stream['name'] = stream['name'].replace('RD+', 'RD+ 🇮🇹')
+                    stream['name'], stream['title'], stream['video_size'], stream['resolution'] = format_stream(stream)
                     streams.append(stream)
 
-        if streams:
-            full_streams['streams'] = streams
+
+            if streams:
+                streams.sort(
+                    key=lambda x: (
+                        next((i for i, res in enumerate(resolution_relevance) if res.lower() in x['resolution'].lower()), float('inf')),
+                        -x['video_size']
+                    )
+                )
+            else:
+                for stream in full_streams.get('streams', {}):
+                    stream['name'] = stream['name'].replace('RD download', 'RD⏳')
+                    stream['name'], stream['title'], stream['video_size'], stream['resolution'] = format_stream(stream)
+                    streams.append(stream)
+
+        full_streams['streams'] = streams
 
         if check_list:
             rd_key = get_realdebrid_key_from_url(addon_url)
@@ -73,6 +99,53 @@ async def get_stream(addon_url: str, type: str, id: str):
             asyncio.create_task(delete_torrents(check_list, rd_key))
 
     return full_streams
+
+
+# Extract Stream infomations
+def extract_stream_infos(stream: dict) -> tuple:
+    try:
+        name_parts = stream['name'].split('\n')
+        name = name_parts[0]
+        resolution = name_parts[1]
+    except:
+        resolution = 'UNK'
+    title_parts = stream['title'].split('\n')
+    filename = title_parts[0]
+    info = title_parts[1]
+    match = re.search(r'👤 (\d+) 💾 ([\d\.]+ (?:GB|MB)) ⚙️ (.+)', info)
+    if match:
+        peers, size, source = match.group(1), match.group(2), match.group(3)
+    try:
+        languages = title_parts[2]
+    except:
+        if source != 'ilCorSaRoNeRo':
+            languages = 'Unknown'
+        else:
+            languages = '🇮🇹'
+
+    return name, resolution, filename, peers, size, source, languages
+
+# Rename stream
+def format_stream(stream: dict) -> tuple:
+
+    name, resolution, filename, peers, size, source, languages = extract_stream_infos(stream)
+
+    if 'GB' in size:
+        raw_size = gb_to_bytes(float(size.replace(' GB', '')))
+    elif 'MB' in size:
+        raw_size = mb_to_bytes(float(size.replace(' MB', '')))
+    
+    if 'RD+' in name:
+        name = f"[RD⚡] Torrentio {resolution}"
+        title = f"📄{filename}\n📦{size}\n🔍{source}\n🔊{languages}"
+    elif 'RD⏳' in name:
+        name = f"[RD⏳] Torrentio {resolution}"
+        title = f"📄{filename}\n📦{size} 👤 {peers}\n🔍{source}\n🔊{languages}"
+    else:
+        name = f"Torrentio {resolution}"
+        title = f"📄{filename}\n📦{size} 👤 {peers}\n🔍{source}\n🔊{languages}"
+
+    return name, title, raw_size, resolution
 
 
 # Debrid checker
@@ -95,6 +168,7 @@ async def delete_torrents(delete_list: list, rd_key: str):
                 if torrent['hash'] == hash:
                     await rd.delete_torrent(client, torrent['id'], 0)
 
+# Debrid delete downloads
 async def delete_downloads(delete_list: list, rd_key: str):
     async with httpx.AsyncClient(timeout=120, headers={'Authorization': f"Bearer {rd_key}"}) as client:
         for stream in delete_list:
@@ -137,6 +211,13 @@ def decode_base64_url(encoded_url):
     encoded_url += padding
     decoded_bytes = base64.b64decode(encoded_url)
     return decoded_bytes.decode('utf-8')
+
+
+def gb_to_bytes(gb: float) -> int:
+    return int(gb * 1024**3)
+
+def mb_to_bytes(mb: float) -> int:
+    return int(mb * 1024**2)
 
 if __name__ == '__main__':
     import uvicorn
