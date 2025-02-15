@@ -68,8 +68,9 @@ async def get_stream(addon_url: str, type: str, id: str):
             full_streams['streams'] = streams
 
         if check_list:
-            asyncio.create_task(delete_downloads(check_list))
-            asyncio.create_task(delete_torrents(check_list))
+            rd_key = get_realdebrid_key_from_url(addon_url)
+            asyncio.create_task(delete_downloads(check_list, rd_key))
+            asyncio.create_task(delete_torrents(check_list, rd_key))
 
     return full_streams
 
@@ -85,32 +86,25 @@ async def is_cached(stream: dict) -> bool:
             return False
         
 # Debrid delete torrents
-async def delete_torrents(delete_list: list):
-    print("ciao delete torrents")
-    async with httpx.AsyncClient(timeout=120) as client:
+async def delete_torrents(delete_list: list, rd_key: str):
+    async with httpx.AsyncClient(timeout=120, headers={'Authorization': f"Bearer {rd_key}"}) as client:
         for stream in delete_list:
             hash = get_hash_from_url(stream['url'])
-            #print(hash)
             torrents = await rd.get_torrents(client, 0)
-            #print(torrents)
             for torrent in torrents:
                 if torrent['hash'] == hash:
-                    print(f"Delete Torrent ID: {torrent['id']}")
                     await rd.delete_torrent(client, torrent['id'], 0)
 
-async def delete_downloads(delete_list: list):
-    print("ciao delete downloads")
-    async with httpx.AsyncClient(timeout=120) as client:
+async def delete_downloads(delete_list: list, rd_key: str):
+    async with httpx.AsyncClient(timeout=120, headers={'Authorization': f"Bearer {rd_key}"}) as client:
         for stream in delete_list:
             if 'torrentio' in stream['url']:
                 filename = get_filename_from_url(stream['url'])
             else:
                 filename = stream['behaviorHints']['filename']
             downlods = await rd.get_downloads(client, 0)
-            print("downloads", downlods)
             for download in downlods:
                 if download['filename'] == filename:
-                    print(f"Delete Download ID: {download['id']}")
                     await rd.delete_download(client, download['id'], 0)
         
 
@@ -131,6 +125,11 @@ def get_filename_from_url(url: str) -> str:
         print(unquote(url_parts[-1]))
         return unquote(url_parts[-1])
 
+def get_realdebrid_key_from_url(url: str) -> str:
+    # Torrentio
+    url_parts = url.split('realdebrid=')
+    if 'torrentio' in url:
+        return url_parts[-1]
 
 # Url decoder
 def decode_base64_url(encoded_url):
