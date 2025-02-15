@@ -190,23 +190,18 @@ async def delete_downloads(delete_list: list, rd_key: str):
 
 # Torrent get hash
 def get_hash_from_url(url: str) -> str:
-    # Torrentio
     url_parts = url.split('/')
     if 'torrentio' in url:
         return url_parts[5]
-    # Mediafusion
-    elif 'mediafusion' in url:
-        return url_parts[-1]
+
     
 def get_filename_from_url(url: str) -> str:
-    # Torrentio
     url_parts = url.split('/')
     if 'torrentio' in url:
         print(unquote(url_parts[-1]))
         return unquote(url_parts[-1])
 
 def get_realdebrid_key_from_url(url: str) -> str:
-    # Torrentio
     url_parts = url.split('realdebrid=')
     if 'torrentio' in url:
         return url_parts[-1]
