@@ -78,18 +78,18 @@ async def get_stream(addon_url: str, type: str, id: str):
                     streams.append(stream)
 
 
-            if streams:
-                streams.sort(
-                    key=lambda x: (
-                        next((i for i, res in enumerate(resolution_relevance) if res.lower() in x['resolution'].lower()), float('inf')),
-                        -x['video_size']
-                    )
+        if len(streams) > 0:
+            streams.sort(
+                key=lambda x: (
+                    next((i for i, res in enumerate(resolution_relevance) if res.lower() in x['resolution'].lower()), float('inf')),
+                    -x['video_size']
                 )
-            else:
-                for stream in full_streams.get('streams', {}):
-                    stream['name'] = stream['name'].replace('RD download', 'RD⏳')
-                    stream['name'], stream['title'], stream['video_size'], stream['resolution'] = format_stream(stream)
-                    streams.append(stream)
+            )
+        else:
+            for stream in full_streams.get('streams', {}):
+                stream['name'] = stream['name'].replace('RD download', 'RD⏳')
+                stream['name'], stream['title'], stream['video_size'], stream['resolution'] = format_stream(stream)
+                streams.append(stream)
 
         full_streams['streams'] = streams
 
@@ -103,27 +103,33 @@ async def get_stream(addon_url: str, type: str, id: str):
 
 # Extract Stream infomations
 def extract_stream_infos(stream: dict) -> tuple:
+
+    # Name
     try:
         name_parts = stream['name'].split('\n')
         name = name_parts[0]
         resolution = name_parts[1]
     except:
         resolution = 'UNK'
-    title_parts = stream['title'].split('\n')
-    filename = title_parts[0]
-    info = title_parts[1]
-    match = re.search(r'👤 (\d+) 💾 ([\d\.]+ (?:GB|MB)) ⚙️ (.+)', info)
-    if match:
-        peers, size, source = match.group(1), match.group(2), match.group(3)
-    try:
-        languages = title_parts[2]
-    except:
-        if source != 'ilCorSaRoNeRo':
-            languages = 'Unknown'
-        else:
-            languages = '🇮🇹'
 
-    return name, resolution, filename, peers, size, source, languages
+    # Title (description)
+    pattern = re.compile(r"""
+        ^(.+?)\s*\n👤\s*            # Filename
+        (\d+)\s+                    # Peers
+        💾\s*([\d\.]+\s*[GM]B)\s+   # Size
+        ⚙️\s*(.+?)\s*               # Source
+        (?:\n(.*))?$                # Language
+    """, re.VERBOSE | re.MULTILINE)
+    match = pattern.search(stream['title'])
+
+    if match:
+        filename = match.group(1).strip()
+        peers = match.group(2)
+        size = match.group(3)
+        source = match.group(4).strip()
+        languages = match.group(5).strip() if match.group(5) else "Unknown"    
+        return name, resolution, filename, peers, size, source, languages
+
 
 # Rename stream
 def format_stream(stream: dict) -> tuple:
@@ -137,13 +143,13 @@ def format_stream(stream: dict) -> tuple:
     
     if 'RD+' in name:
         name = f"[RD⚡] Torrentio {resolution}"
-        title = f"📄{filename}\n📦{size}\n🔍{source}\n🔊{languages}"
+        title = f"📄 {filename}\n📦 {size}\n🔍 {source}\n🔊 {languages}"
     elif 'RD⏳' in name:
         name = f"[RD⏳] Torrentio {resolution}"
-        title = f"📄{filename}\n📦{size} 👤 {peers}\n🔍{source}\n🔊{languages}"
+        title = f"📄 {filename}\n📦 {size} 👤 {peers}\n🔍 {source}\n🔊 {languages}"
     else:
         name = f"Torrentio {resolution}"
-        title = f"📄{filename}\n📦{size} 👤 {peers}\n🔍{source}\n🔊{languages}"
+        title = f"📄 {filename}\n📦 {size} 👤 {peers}\n🔍 {source}\n🔊 {languages}"
 
     return name, title, raw_size, resolution
 
