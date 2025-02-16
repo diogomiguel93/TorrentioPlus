@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
+#from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from urllib.parse import unquote
 import httpx
@@ -43,21 +43,25 @@ async def configure(request: Request):
 
 
 # Manifest endpoint
-@app.get('/{addon_url}/manifest.json')
-async def get_manifest(addon_url: str):
+@app.get('/{user_settings}/{addon_url}/manifest.json')
+async def get_manifest(user_settings:str, addon_url: str):
     addon_url = decode_base64_url(addon_url)
     async with httpx.AsyncClient(timeout=10) as client:
         response = await client.get(f"{addon_url}/manifest.json")
         manifest = response.json()
 
-    manifest['name'] = 'Torrentio+ RD'
+    if 'realdebrid' in addon_url:
+        manifest['name'] = 'Torrentio 🇮🇹 - RD'
+    else:
+        manifest['name'] = 'Torrentio 🇮🇹'
     return manifest
 
 
 # Stream filter
-@app.get('/{addon_url}/stream/{type}/{id}.json')
-async def get_stream(addon_url: str, type: str, id: str):
+@app.get('/{user_settings}/{addon_url}/stream/{type}/{id}.json')
+async def get_stream(user_settings: str, addon_url: str, type: str, id: str):
     addon_url = decode_base64_url(addon_url)
+    user_settings = parse_user_settings(user_settings)
     async with httpx.AsyncClient(timeout=60) as client:
         response = await client.get(f"{addon_url}/stream/{type}/{id}.json")
         full_streams = response.json()
@@ -85,7 +89,7 @@ async def get_stream(addon_url: str, type: str, id: str):
                     -x['video_size']
                 )
             )
-        else:
+        elif user_settings['original_results']:
             for stream in full_streams.get('streams', {}):
                 stream['name'] = stream['name'].replace('RD download', 'RD⏳')
                 stream['name'], stream['title'], stream['video_size'], stream['resolution'] = format_stream(stream)
@@ -206,6 +210,7 @@ def get_realdebrid_key_from_url(url: str) -> str:
     if 'torrentio' in url:
         return url_parts[-1]
 
+
 # Url decoder
 def decode_base64_url(encoded_url):
     padding = '=' * (-len(encoded_url) % 4)
@@ -214,11 +219,29 @@ def decode_base64_url(encoded_url):
     return decoded_bytes.decode('utf-8')
 
 
+# Byte convetions
 def gb_to_bytes(gb: float) -> int:
     return int(gb * 1024**3)
 
 def mb_to_bytes(mb: float) -> int:
     return int(mb * 1024**2)
+
+
+# User settings
+def parse_user_settings(user_settings: str) -> dict:
+    settings = user_settings.split('|')
+    _user_settings = {
+        'original_results': False
+    }
+    for setting in settings:
+        if 'oResult' in setting:
+            setting = setting.split('=')[1]
+            if setting == 'true':
+                _user_settings['original_results'] = True
+
+    return _user_settings
+
+
 
 if __name__ == '__main__':
     import uvicorn

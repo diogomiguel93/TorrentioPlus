@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Torrentio Filter</title>
+    <title>Torrentio 🇮🇹</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -94,11 +94,16 @@
 </head>
 <body>
     <div class="config-container">
-        <h1>Torrentio Filter</h1>
+        <h1>Torrentio 🇮🇹</h1>
         <form id="config-form">
             <div class="form-group">
                 <label for="addon-url">URL dell'Addon Torrentio</label>
                 <input type="text" id="addon-url" name="addon-url" placeholder="Inserisci l'URL dell'addon" required>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="show-original"> Mostra flussi originali quando non trovati in italiano
+                </label>
             </div>
             <button type="submit" class="btn btn-primary">Genera Link</button>
         </form>
@@ -108,14 +113,25 @@
     <script>
         document.getElementById('config-form').addEventListener('submit', function(e) {
             e.preventDefault();
-            const addonUrl = document.getElementById('addon-url').value.replace('/manifest.json', '').replace('stremio://', 'https://');
-            const urlEncoded = btoa(addonUrl);
+            const addonUrlInput = document.getElementById('addon-url');
+            const addonUrl = addonUrlInput.value.trim();
+            const requiredPrefix = "https://torrentio.strem.fun/";
+    
+            if (!addonUrl.startsWith(requiredPrefix)) {
+                alert("Errore: Addoon Torrentio non rilevato.");
+                addonUrlInput.focus();
+                return;
+            }
+    
+            const cleanUrl = addonUrl.replace('/manifest.json', '').replace('stremio://', 'https://');
+            const urlEncoded = btoa(cleanUrl);
             const serverUrl = window.location.origin;
-            const finalUrl = `${serverUrl}/${urlEncoded}/manifest.json`;
+            const showOriginal = document.getElementById('show-original').checked;
+            let finalUrl = `${serverUrl}/oResults=${showOriginal}/${urlEncoded}/manifest.json`;
             
             document.getElementById('generated-link').textContent = finalUrl;
             document.getElementById('generated-link').style.display = 'block';
-            
+    
             const installButton = document.getElementById('install-button');
             installButton.onclick = function() {
                 window.location.href = finalUrl.replace("https", "stremio");
