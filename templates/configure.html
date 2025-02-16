@@ -144,7 +144,7 @@
             const addonUrl = addonUrlInput.value.trim();
             const requiredPrefix = "//torrentio.strem.fun/";
     
-            if (!addonUrl.startsWith(requiredPrefix)) {
+            if (!addonUrl.includes(requiredPrefix)) {
                 alert("Errore: Addon Torrentio non rilevato.");
                 addonUrlInput.focus();
                 return;
