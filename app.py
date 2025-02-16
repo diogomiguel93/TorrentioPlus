@@ -38,7 +38,7 @@ app.add_middleware(
 @app.get('/', response_class=HTMLResponse)
 @app.get('/configure', response_class=HTMLResponse)
 async def configure(request: Request):
-    response = templates.TemplateResponse("test.html", {"request": request})
+    response = templates.TemplateResponse("configure.html", {"request": request})
     return response
 
 
