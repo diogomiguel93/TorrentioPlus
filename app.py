@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
-#from fastapi.staticfiles import StaticFiles
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from urllib.parse import unquote
 import httpx
@@ -12,7 +12,7 @@ import re
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
-#app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 resolution_relevance = [
@@ -38,7 +38,7 @@ app.add_middleware(
 @app.get('/', response_class=HTMLResponse)
 @app.get('/configure', response_class=HTMLResponse)
 async def configure(request: Request):
-    response = templates.TemplateResponse("configure.html", {"request": request})
+    response = templates.TemplateResponse("test.html", {"request": request})
     return response
 
 
