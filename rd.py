@@ -13,7 +13,7 @@ async def get_torrents(client: httpx.AsyncClient, delay=0):
 async def get_torrent_info(client: httpx.AsyncClient, id: str, delay=0):
     await asyncio.sleep(delay)
     response = await client.get(f"{api_url}/torrents/info/{id}")
-    print(f"Torrent info: {response}")
+    #print(f"Torrent info: {response}")
     return response.json()
 
 async def delete_torrent(client: httpx.AsyncClient, id: str, delay=0):

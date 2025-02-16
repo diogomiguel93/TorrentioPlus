@@ -75,24 +75,45 @@ async def get_stream(user_settings: str, addon_url: str, type: str, id: str):
                     check_list.append(stream)
                     if await is_cached(stream):
                         stream['name'] = stream['name'].replace('RD download', 'RD+')
-                        stream['name'], stream['title'], stream['video_size'], stream['resolution'] = format_stream(stream)
+                        stream['name'], stream['title'], stream['video_size'], stream['resolution'], stream['peers'] = format_stream(stream)
                         streams.append(stream)
                 else:
-                    stream['name'], stream['title'], stream['video_size'], stream['resolution'] = format_stream(stream)
+                    stream['name'], stream['title'], stream['video_size'], stream['resolution'], stream['peers'] = format_stream(stream)
                     streams.append(stream)
 
 
         if len(streams) > 0:
-            streams.sort(
-                key=lambda x: (
-                    next((i for i, res in enumerate(resolution_relevance) if res.lower() in x['resolution'].lower()), float('inf')),
-                    -x['video_size']
+            sort_type = get_sort_type_from_url(addon_url)
+            # Sort quality then size
+            if sort_type == 'qualitysize':
+                streams.sort(
+                    key=lambda x: (
+                        next((i for i, res in enumerate(resolution_relevance) if res.lower() in x['resolution'].lower()), float('inf')),
+                        -x['video_size']
+                    )
                 )
-            )
+
+            # Sort quality the seeders
+            elif sort_type == 'qualityseeders':
+                streams.sort(
+                    key=lambda x: (
+                        next((i for i, res in enumerate(resolution_relevance) if res.lower() in x['resolution'].lower()), float('inf')),
+                        -x['peers']
+                    )
+                )
+
+            # Sort by size
+            elif sort_type == 'size':
+                streams.sort(key=lambda x: x['video_size'], reverse=True)
+
+            # Sort by seeders (default)
+            elif sort_type == 'seeders':
+                streams.sort(key=lambda x: x['peers'], reverse=True)
+
         elif user_settings['original_results']:
             for stream in full_streams.get('streams', {}):
                 stream['name'] = stream['name'].replace('RD download', 'RD⏳')
-                stream['name'], stream['title'], stream['video_size'], stream['resolution'] = format_stream(stream)
+                stream['name'], stream['title'], stream['video_size'], stream['resolution'], stream['peers'] = format_stream(stream)
                 streams.append(stream)
 
         full_streams['streams'] = streams
@@ -128,7 +149,7 @@ def extract_stream_infos(stream: dict) -> tuple:
 
     if match:
         filename = match.group(1).strip()
-        peers = match.group(2)
+        peers = int(match.group(2))
         size = match.group(3)
         source = match.group(4).strip()
         languages = match.group(5).strip() if match.group(5) else "Unknown"    
@@ -155,14 +176,13 @@ def format_stream(stream: dict) -> tuple:
         name = f"Torrentio {resolution}"
         title = f"📄 {filename}\n📦 {size} 👤 {peers}\n🔍 {source}\n🔊 {languages}"
 
-    return name, title, raw_size, resolution
+    return name, title, raw_size, resolution, peers
 
 
 # Debrid checker
 async def is_cached(stream: dict) -> bool:
     async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
         response = await client.head(stream['url'])
-        print(response.headers)
         if 'real-debrid' in response.headers['location']:
             return True
         else:
@@ -192,23 +212,28 @@ async def delete_downloads(delete_list: list, rd_key: str):
                     await rd.delete_download(client, download['id'], 0)
         
 
-# Torrent get hash
+# Addon URL parts extration
 def get_hash_from_url(url: str) -> str:
     url_parts = url.split('/')
     if 'torrentio' in url:
         return url_parts[5]
 
-    
 def get_filename_from_url(url: str) -> str:
     url_parts = url.split('/')
     if 'torrentio' in url:
-        print(unquote(url_parts[-1]))
         return unquote(url_parts[-1])
 
 def get_realdebrid_key_from_url(url: str) -> str:
     url_parts = url.split('realdebrid=')
     if 'torrentio' in url:
         return url_parts[-1]
+    
+def get_sort_type_from_url(url: str) -> str:
+    match = re.search(r'sort=([^|]+)', url)
+    if match:
+        return match.group(1)
+    else:
+        return 'qualityseeders'
 
 
 # Url decoder
