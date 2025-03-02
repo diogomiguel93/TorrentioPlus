@@ -229,7 +229,7 @@ def get_realdebrid_key_from_url(url: str) -> str:
         return url_parts[-1]
     
 def get_sort_type_from_url(url: str) -> str:
-    match = re.search(r'sort=([^|]+)', url)
+    match = re.search(r'sort=([^|%]+)', url)
     if match:
         return match.group(1)
     else:
