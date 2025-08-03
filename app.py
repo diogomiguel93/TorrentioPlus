@@ -181,8 +181,10 @@ def format_stream(stream: dict) -> tuple:
 
 # Debrid checker
 async def is_cached(stream: dict) -> bool:
-    async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
+    async with httpx.AsyncClient(timeout=120, follow_redirects=False) as client:
+        print(stream['url'])
         response = await client.head(stream['url'])
+        print(response.headers)
         if 'real-debrid' in response.headers['location']:
             return True
         else:
