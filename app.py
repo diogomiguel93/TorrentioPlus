@@ -1,8 +1,7 @@
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from urllib.parse import unquote
 import httpx
 import base64
@@ -25,14 +24,16 @@ resolution_relevance = [
     '480p'
 ]
 
-# Config CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Cloudflare Cache control & CORS
+def json_response(data):
+    response = JSONResponse(data)
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = '*'
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    response.headers["Surrogate-Control"] = "no-store"
+    return response
 
 # Config page
 @app.get('/', response_class=HTMLResponse)
@@ -54,7 +55,7 @@ async def get_manifest(user_settings:str, addon_url: str):
         manifest['name'] = 'Torrentio 🇮🇹 - RD'
     else:
         manifest['name'] = 'Torrentio 🇮🇹'
-    return manifest
+    return json_response(manifest)
 
 
 # Stream filter
@@ -123,7 +124,7 @@ async def get_stream(user_settings: str, addon_url: str, type: str, id: str):
             asyncio.create_task(delete_downloads(check_list, rd_key))
             asyncio.create_task(delete_torrents(check_list, rd_key))
 
-    return full_streams
+    return json_response(full_streams)
 
 
 # Extract Stream infomations
