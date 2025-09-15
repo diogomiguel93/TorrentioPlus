@@ -35,6 +35,20 @@ def json_response(data):
     response.headers["Surrogate-Control"] = "no-store"
     return response
 
+# Headers
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-User": "?1",
+    "Sec-Fetch-Dest": "document",
+}
+
 # Config page
 @app.get('/', response_class=HTMLResponse)
 @app.get('/configure', response_class=HTMLResponse)
@@ -140,17 +154,17 @@ def extract_stream_infos(stream: dict) -> tuple:
 
     # Title (description)
     pattern = re.compile(r"""
-        ^(.+?)\s*\n👤\s*            # Filename
-        (\d+)\s+                    # Peers
-        💾\s*([\d\.]+\s*[GM]B)\s+   # Size
-        ⚙️\s*(.+?)\s*               # Source
-        (?:\n(.*))?$                # Language
+        ^(.+?)\s*                         # Filename
+        (?:\n👤\s*(\d+)\s+)?              # Peers (opzionale)
+        (?:💾\s*([\d\.]+\s*[GM]B)\s+)?    # Size (opzionale)
+        (?:⚙️\s*(.+?)\s*)?                # Source (opzionale)
+        (?:\n(.*))?$                      # Language (opzionale)
     """, re.VERBOSE | re.MULTILINE)
     match = pattern.search(stream['title'])
 
     if match:
         filename = match.group(1).strip()
-        peers = int(match.group(2))
+        peers = int(match.group(2)) if match.group(2) else 0
         size = match.group(3)
         source = match.group(4).strip()
         languages = match.group(5).strip() if match.group(5) else "Unknown"    
@@ -183,9 +197,7 @@ def format_stream(stream: dict) -> tuple:
 # Debrid checker
 async def is_cached(stream: dict) -> bool:
     async with httpx.AsyncClient(timeout=120, follow_redirects=False) as client:
-        print(stream['url'])
         response = await client.head(stream['url'])
-        print(response.headers)
         if 'real-debrid' in response.headers['location']:
             return True
         else:
@@ -219,7 +231,7 @@ async def delete_downloads(delete_list: list, rd_key: str):
 def get_hash_from_url(url: str) -> str:
     url_parts = url.split('/')
     if 'torrentio' in url:
-        return url_parts[5]
+        return url_parts[6]
 
 def get_filename_from_url(url: str) -> str:
     url_parts = url.split('/')

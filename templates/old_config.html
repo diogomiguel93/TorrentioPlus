@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torrentio 🇮🇹</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            position: relative;
+        }
+        .config-container {
+            background: #ffffff;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+            position: relative;
+        }
+        .telegram-link {
+            object-fit: cover;
+            background-color: white;
+            overflow: hidden;
+            position: absolute;
+            top: -50px; /* Sposta l'immagine sopra il riquadro */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px; /* Regola la dimensione dell'immagine */
+            height: 80px;
+            border-radius: 50%;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+        .telegram-link:hover {
+            transform: translateX(-50%) scale(1.1);
+        }
+
+    
+        h1 {
+            color: #333;
+            font-size: 2em;
+            margin-bottom: 1.2rem;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 1.8rem;
+            align-items: center;
+        }
+        .form-group label {
+            color: #444;
+            font-size: 1.2em;
+            margin-bottom: 0.6rem;
+            font-weight: bold;
+        }
+        .form-group input {
+            padding: 0.9rem;
+            font-size: 1.1em;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            width: 90%;
+            transition: 0.3s;
+            text-align: center;
+        }
+        .form-group input:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.6);
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.2em;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 1rem;
+            font-weight: bold;
+        }
+        .btn-primary {
+            background: #667eea;
+        }
+        .btn-primary:hover {
+            background: #5563c1;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        #generated-link {
+            margin-top: 1.2rem;
+            font-size: 1.2em;
+            color: #4a90e2;
+            background: #f0f8ff;
+            padding: 0.9rem;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            word-wrap: break-word;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="config-container">
+        <!-- Link a Telegram con immagine -->
+        <a href="https://t.me/Stremio_Italia" target="_blank">
+            <img src="/static/Stremio_Italia_Logo.png" alt="Telegram" class="telegram-link">
+        </a>
+
+        <h1>Torrentio 🇮🇹</h1>
+        <form id="config-form">
+            <div class="form-group">
+                <label for="addon-url">URL dell'Addon Torrentio</label>
+                <input type="text" id="addon-url" name="addon-url" placeholder="Inserisci l'URL dell'addon" required>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="show-original"> Mostra flussi originali quando non trovati in italiano
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary">Genera Link</button>
+        </form>
+        <p id="generated-link"></p>
+        <button id="install-button" class="btn btn-success" style="display: none;">Installa</button>
+    </div>
+
+    <script>
+        document.getElementById('config-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const addonUrlInput = document.getElementById('addon-url');
+            const addonUrl = addonUrlInput.value.trim();
+            const requiredPrefix = "//torrentio.strem.fun/";
+    
+            if (!addonUrl.includes(requiredPrefix)) {
+                alert("Errore: Addon Torrentio non rilevato.");
+                addonUrlInput.focus();
+                return;
+            }
+    
+            const cleanUrl = addonUrl.replace('/manifest.json', '').replace('stremio://', 'https://');
+            const urlEncoded = btoa(cleanUrl);
+            const serverUrl = window.location.origin;
+            const showOriginal = document.getElementById('show-original').checked;
+            let finalUrl = `${serverUrl}/oResults=${showOriginal}/${urlEncoded}/manifest.json`;
+            
+            document.getElementById('generated-link').textContent = finalUrl;
+            document.getElementById('generated-link').style.display = 'block';
+    
+            const installButton = document.getElementById('install-button');
+            installButton.onclick = function() {
+                window.location.href = finalUrl.replace("https", "stremio");
+            };
+            installButton.style.display = 'block';
+        });
+    </script>
+</body>
+</html>

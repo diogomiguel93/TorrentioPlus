@@ -1,170 +1,251 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Torrentio 🇮🇹</title>
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            position: relative;
-        }
-        .config-container {
-            background: #ffffff;
-            padding: 2.5rem;
-            border-radius: 12px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
-            width: 100%;
-            max-width: 480px;
-            text-align: center;
-            position: relative;
-        }
-        .telegram-link {
-            object-fit: cover;
-            background-color: white;
-            overflow: hidden;
-            position: absolute;
-            top: -50px; /* Sposta l'immagine sopra il riquadro */
-            left: 50%;
-            transform: translateX(-50%);
-            width: 80px; /* Regola la dimensione dell'immagine */
-            height: 80px;
-            border-radius: 50%;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            transition: transform 0.3s ease;
-        }
-        .telegram-link:hover {
-            transform: translateX(-50%) scale(1.1);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Torrentio 🇮🇹</title>
+<style>
+body {
+  font-family: 'Arial', sans-serif;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+.config-container {
+  background: #ffffff;
+  padding: 2.5rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 500px;
+  position: relative;
+}
+.telegram-link {
+  position: absolute;
+  top: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+h1 {
+  color: #333;
+  font-size: 2em;
+  margin-bottom: 1.2rem;
+  text-align: center;
+}
+.form-group {
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+.form-group label {
+  display: block;
+  color: #444;
+  font-size: 1.1em;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+input, select, .dropdown-btn {
+  width: 100%;
+  padding: 0.9rem;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-size: 1em;
+  margin-bottom: 0.8rem;
+}
+.btn {
+  display: block;
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.1em;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 1rem;
+  font-weight: bold;
+  transition: 0.3s;
+}
+.btn-primary { background: #667eea; }
+.btn-primary:hover { background: #5563c1; }
+.btn-success { background: #28a745; }
+.btn-success:hover { background: #218838; }
+#generated-link {
+  margin-top: 1rem;
+  font-size: 1em;
+  color: #4a90e2;
+  background: #f0f8ff;
+  padding: 0.8rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  word-wrap: break-word;
+  display: none;
+}
 
-    
-        h1 {
-            color: #333;
-            font-size: 2em;
-            margin-bottom: 1.2rem;
-        }
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 1.8rem;
-            align-items: center;
-        }
-        .form-group label {
-            color: #444;
-            font-size: 1.2em;
-            margin-bottom: 0.6rem;
-            font-weight: bold;
-        }
-        .form-group input {
-            padding: 0.9rem;
-            font-size: 1.1em;
-            border: 2px solid #ccc;
-            border-radius: 8px;
-            width: 90%;
-            transition: 0.3s;
-            text-align: center;
-        }
-        .form-group input:focus {
-            border-color: #667eea;
-            outline: none;
-            box-shadow: 0 0 8px rgba(102, 126, 234, 0.6);
-        }
-        .btn {
-            display: block;
-            width: 100%;
-            padding: 1rem;
-            font-size: 1.2em;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: 0.3s;
-            margin-top: 1rem;
-            font-weight: bold;
-        }
-        .btn-primary {
-            background: #667eea;
-        }
-        .btn-primary:hover {
-            background: #5563c1;
-        }
-        .btn-success {
-            background: #28a745;
-        }
-        .btn-success:hover {
-            background: #218838;
-        }
-        #generated-link {
-            margin-top: 1.2rem;
-            font-size: 1.2em;
-            color: #4a90e2;
-            background: #f0f8ff;
-            padding: 0.9rem;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            word-wrap: break-word;
-            display: none;
-        }
-    </style>
+/* Dropdown con checkbox */
+.dropdown { position: relative; }
+.dropdown-btn { 
+  cursor: pointer; 
+  background: #fff; 
+  text-align: left; 
+  padding: 0.9rem; 
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+.dropdown-content {
+  display: none;
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  padding: 0.5rem;
+  box-sizing: border-box;
+  z-index: 10;
+  text-align: left; /* allinea tutto a sinistra */
+}
+
+.dropdown-content label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.25rem;       /* spazio minimo tra checkbox e testo */
+  margin: 0.1rem 0;
+  white-space: nowrap; /* testo su una riga sola */
+  font-weight: normal;
+  padding: 0;
+}
+
+.dropdown-content input[type="checkbox"] {
+  margin: 0;           /* rimuove margine di default */
+  padding: 0;          /* rimuove padding di default */
+  flex-shrink: 0;      /* checkbox non si restringe */
+  width: auto;         /* larghezza minima della checkbox */
+  height: auto;        /* altezza minima */
+}
+.dropdown.open .dropdown-content { display: block; }
+</style>
 </head>
 <body>
-    <div class="config-container">
-        <!-- Link a Telegram con immagine -->
-        <a href="https://t.me/Stremio_Italia" target="_blank">
-            <img src="/static/Stremio_Italia_Logo.png" alt="Telegram" class="telegram-link">
-        </a>
+<div class="config-container">
+  <a href="https://t.me/Stremio_Italia" target="_blank">
+    <img src="/static/Stremio_Italia_Logo.png" alt="Telegram" class="telegram-link">
+  </a>
 
-        <h1>Torrentio 🇮🇹</h1>
-        <form id="config-form">
-            <div class="form-group">
-                <label for="addon-url">URL dell'Addon Torrentio</label>
-                <input type="text" id="addon-url" name="addon-url" placeholder="Inserisci l'URL dell'addon" required>
-            </div>
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" id="show-original"> Mostra flussi originali quando non trovati in italiano
-                </label>
-            </div>
-            <button type="submit" class="btn btn-primary">Genera Link</button>
-        </form>
-        <p id="generated-link"></p>
-        <button id="install-button" class="btn btn-success" style="display: none;">Installa</button>
+  <h1>Torrentio 🇮🇹</h1>
+  <form id="config-form">
+
+    <div class="form-group">
+      <label for="iSort">Ordinamento</label>
+      <select id="iSort" name="sort">
+        <option value="quality" selected>Per qualità e seeders</option>
+        <option value="qualitysize">Per qualità e dimensione</option>
+        <option value="seeders">Per seeders</option>
+        <option value="size">Per dimensione</option>
+      </select>
     </div>
 
-    <script>
-        document.getElementById('config-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const addonUrlInput = document.getElementById('addon-url');
-            const addonUrl = addonUrlInput.value.trim();
-            const requiredPrefix = "//torrentio.strem.fun/";
-    
-            if (!addonUrl.includes(requiredPrefix)) {
-                alert("Errore: Addon Torrentio non rilevato.");
-                addonUrlInput.focus();
-                return;
-            }
-    
-            const cleanUrl = addonUrl.replace('/manifest.json', '').replace('stremio://', 'https://');
-            const urlEncoded = btoa(cleanUrl);
-            const serverUrl = window.location.origin;
-            const showOriginal = document.getElementById('show-original').checked;
-            let finalUrl = `${serverUrl}/oResults=${showOriginal}/${urlEncoded}/manifest.json`;
-            
-            document.getElementById('generated-link').textContent = finalUrl;
-            document.getElementById('generated-link').style.display = 'block';
-    
-            const installButton = document.getElementById('install-button');
-            installButton.onclick = function() {
-                window.location.href = finalUrl.replace("https", "stremio");
-            };
-            installButton.style.display = 'block';
-        });
-    </script>
+    <div class="form-group">
+      <label>Escludi qualità/risoluzioni</label>
+      <div class="dropdown" id="qualityDropdown">
+        <div class="dropdown-btn">Seleziona risoluzioni da escludere</div>
+        <div class="dropdown-content">
+          <label><input type="checkbox" value="brremux"> BluRay REMUX</label>
+          <label><input type="checkbox" value="hdrall"> HDR/HDR10+/Dolby Vision</label>
+          <label><input type="checkbox" value="dolbyvision"> Dolby Vision</label>
+          <label><input type="checkbox" value="dolbyvisionwithhdr"> Dolby Vision + HDR</label>
+          <label><input type="checkbox" value="threed"> 3D</label>
+          <label><input type="checkbox" value="nonthreed"> Non 3D (NON SELEZIONARE SE NON SICURI)</label>
+          <label><input type="checkbox" value="4k"> 4K</label>
+          <label><input type="checkbox" value="1080p"> 1080p</label>
+          <label><input type="checkbox" value="720p"> 720p</label>
+          <label><input type="checkbox" value="480p"> 480p</label>
+          <label><input type="checkbox" value="other"> Other (DVDRip/HDRip/BDRip...)</label>
+          <label><input type="checkbox" value="scr"> Screener</label>
+          <label><input type="checkbox" value="cam"> Cam</label>
+          <label><input type="checkbox" value="unknown"> Unknown</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="iLimit">Max risultati per qualità</label>
+      <input type="number" id="iLimit" min="1" placeholder="Es. 5">
+    </div>
+
+    <div class="form-group">
+      <label for="realDebrid">RealDebrid API Key</label>
+      <input type="text" id="realDebrid" placeholder="Inserisci la tua API Key">
+    </div>
+
+    <div class="form-group">
+      <label>
+        <input type="checkbox" id="show-original"> Mostra flussi originali se non disponibili in italiano
+      </label>
+    </div>
+
+    <input type="hidden" id="providers" value="yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex,rutor,rutracker,comando,bludv,torrent9,ilcorsaronero,mejortorrent,wolfmax4k,cinecalidad,besttorrents">
+    <input type="hidden" id="language" value="italian">
+
+    <button type="submit" class="btn btn-primary">Genera Link</button>
+  </form>
+
+  <p id="generated-link"></p>
+  <button id="install-button" class="btn btn-success" style="display: none;">Installa</button>
+</div>
+
+<script>
+const dropdown = document.getElementById('qualityDropdown');
+dropdown.querySelector('.dropdown-btn').addEventListener('click', () => {
+  dropdown.classList.toggle('open');
+});
+document.addEventListener('click', (e) => {
+  if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
+});
+
+document.getElementById('config-form').addEventListener('submit', function(e){
+  e.preventDefault();
+  const serverUrl = window.location.origin;
+  const showOriginal = document.getElementById('show-original').checked;
+  const sort = document.getElementById('iSort').value;
+  const limit = document.getElementById('iLimit').value;
+  const realDebrid = document.getElementById('realDebrid').value.trim();
+  const providers = document.getElementById('providers').value;
+  const language = document.getElementById('language').value;
+
+  const qualityFilters = Array.from(dropdown.querySelectorAll('input:checked')).map(cb=>cb.value).join(',');
+
+  let configParts = [];
+  if(providers) configParts.push("providers="+providers);
+  if(language) configParts.push("language="+language);
+  if(sort && sort!="quality") configParts.push("sort="+sort);
+  if(qualityFilters) configParts.push("qualityfilter="+qualityFilters);
+  if(limit) configParts.push("limit="+limit);
+  if(realDebrid) {
+    configParts.push("debridoptions=nocatalog");
+    configParts.push("realdebrid="+realDebrid);
+  }
+
+  let configString = configParts.join("|");
+  const encodedUrl = btoa(`https://torrentio.strem.fun/${configString}`);
+  let finalUrl = `${serverUrl}/oResults=${showOriginal}/${encodedUrl}/manifest.json`;
+
+  document.getElementById('generated-link').textContent = finalUrl;
+  document.getElementById('generated-link').style.display='block';
+
+  const installButton = document.getElementById('install-button');
+  installButton.onclick = function(){ window.location.href = finalUrl.replace("https","stremio"); };
+  installButton.style.display='block';
+});
+</script>
 </body>
 </html>
