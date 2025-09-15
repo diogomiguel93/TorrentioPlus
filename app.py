@@ -54,6 +54,10 @@ headers = {
 @app.get('/configure', response_class=HTMLResponse)
 async def configure(request: Request):
     response = templates.TemplateResponse("configure.html", {"request": request})
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    response.headers["Surrogate-Control"] = "no-store"
     return response
 
 
