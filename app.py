@@ -158,44 +158,54 @@ def extract_stream_infos(stream: dict) -> tuple:
 
     # Title (description)
     pattern = re.compile(r"""
-        ^(.+?)\s*                         # Filename
-        (?:\n👤\s*(\d+)\s+)?              # Peers (opzionale)
-        (?:💾\s*([\d\.]+\s*[GM]B)\s+)?    # Size (opzionale)
-        (?:⚙️\s*(.+?)\s*)?                # Source (opzionale)
-        (?:\n(.*))?$                      # Language (opzionale)
-    """, re.VERBOSE | re.MULTILINE)
+        ^(?:([^\n]+)\n)?            # Folder opzionale
+        ([^\n👤💾⚙️]+)               # Filename: tutto fino ai simboli speciali
+        (?:\n👤\s*(\d+))?           # Peers opzionale
+        (?:\s+💾\s*([\d\.]+\s*\w+))? # Size opzionale
+        (?:\s+⚙️\s*(.+?))?           # Source opzionale
+        (?:\n(.*))?                 # Language opzionale
+    $""", re.VERBOSE | re.MULTILINE)
     match = pattern.search(stream['title'])
 
     if match:
-        filename = match.group(1).strip()
-        peers = int(match.group(2)) if match.group(2) else 0
-        size = match.group(3)
-        source = match.group(4).strip()
-        languages = match.group(5).strip() if match.group(5) else "Unknown"    
-        return name, resolution, filename, peers, size, source, languages
+        folder = match.group(1)
+        filename = match.group(2).strip()
+        peers = int(match.group(3)) if match.group(3) else 0
+        size = match.group(4)
+        source = match.group(5).strip()
+        languages = match.group(6).strip() if match.group(6) else "Unknown"    
+        return name, resolution, folder, filename, peers, size, source, languages
 
 
 # Rename stream
 def format_stream(stream: dict) -> tuple:
 
-    name, resolution, filename, peers, size, source, languages = extract_stream_infos(stream)
+    name, resolution, folder, filename, peers, size, source, languages = extract_stream_infos(stream)
+    raw_peers = peers # return integer for sorting
 
     if 'GB' in size:
         raw_size = gb_to_bytes(float(size.replace(' GB', '')))
     elif 'MB' in size:
         raw_size = mb_to_bytes(float(size.replace(' MB', '')))
+
+    folder = f"📁 {folder}\n" if folder != None else ''
+    filename = f"📄 {filename}\n" if filename != None else ''
+    size = f"📦 {size}" if size != None else ''
+    peers = f"👤 {peers}\n" if peers != None else ''
+    source = f"🔍 {source}\n" if source != None else ''
+    languages = f"🔊 {languages}" if languages != None else ''
     
     if 'RD+' in name:
         name = f"[RD⚡] Torrentio {resolution}"
-        title = f"📄 {filename}\n📦 {size}\n🔍 {source}\n🔊 {languages}"
+        title = folder + filename + size + '\n' + source + languages
     elif 'RD⏳' in name:
         name = f"[RD⏳] Torrentio {resolution}"
-        title = f"📄 {filename}\n📦 {size} 👤 {peers}\n🔍 {source}\n🔊 {languages}"
+        title = folder + filename + size + ' ' + peers + source + languages
     else:
         name = f"Torrentio {resolution}"
-        title = f"📄 {filename}\n📦 {size} 👤 {peers}\n🔍 {source}\n🔊 {languages}"
+        title = folder + filename + size + ' ' + peers + source + languages
 
-    return name, title, raw_size, resolution, peers
+    return name, title, raw_size, resolution, raw_peers
 
 
 # Debrid checker
