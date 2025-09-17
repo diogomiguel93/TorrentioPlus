@@ -8,6 +8,7 @@ import base64
 import asyncio
 import rd
 import re
+import os
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -61,16 +62,26 @@ async def configure(request: Request):
     return response
 
 
+@app.get('/link_generator', response_class=HTMLResponse)
+async def configure(request: Request):
+    response = templates.TemplateResponse("old_config.html", {"request": request})
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    response.headers["Surrogate-Control"] = "no-store"
+    return response
+
 # Manifest endpoint
 @app.get('/{user_settings}/{addon_url}/manifest.json')
 async def get_manifest(user_settings:str, addon_url: str):
     addon_url = decode_base64_url(addon_url)
+    debrid_sign = parse_debrid_sign(addon_url)
     async with httpx.AsyncClient(timeout=10) as client:
         response = await client.get(f"{addon_url}/manifest.json")
         manifest = response.json()
 
-    if 'realdebrid' in addon_url:
-        manifest['name'] = 'Torrentio 🇮🇹 - RD'
+    if debrid_sign != '':
+        manifest['name'] = f'Torrentio 🇮🇹 - {debrid_sign}'
     else:
         manifest['name'] = 'Torrentio 🇮🇹'
     return json_response(manifest)
@@ -81,23 +92,25 @@ async def get_manifest(user_settings:str, addon_url: str):
 async def get_stream(user_settings: str, addon_url: str, type: str, id: str):
     addon_url = decode_base64_url(addon_url)
     user_settings = parse_user_settings(user_settings)
+    debrid_sign = parse_debrid_sign(addon_url)
     async with httpx.AsyncClient(timeout=60) as client:
         response = await client.get(f"{addon_url}/stream/{type}/{id}.json")
         full_streams = response.json()
-        
         # Filter streams
         streams = []
         check_list = []
         for stream in full_streams.get('streams', {}):
             if 'ilCorSaRoNeRo' in stream['title'] or '🇮🇹' in stream['title']:
-                if 'download' in stream['name']:
+
+                # Real debrid cache check
+                if debrid_sign == 'RD' and 'download' in stream['name']:
                     check_list.append(stream)
                     if await is_cached(stream):
                         stream['name'] = stream['name'].replace('RD download', 'RD+')
-                        stream['name'], stream['title'], stream['video_size'], stream['resolution'], stream['peers'] = format_stream(stream)
+                        stream['name'], stream['title'], stream['video_size'], stream['resolution'], stream['peers'] = format_stream(stream, debrid_sign)
                         streams.append(stream)
                 else:
-                    stream['name'], stream['title'], stream['video_size'], stream['resolution'], stream['peers'] = format_stream(stream)
+                    stream['name'], stream['title'], stream['video_size'], stream['resolution'], stream['peers'] = format_stream(stream, debrid_sign)
                     streams.append(stream)
 
 
@@ -131,8 +144,8 @@ async def get_stream(user_settings: str, addon_url: str, type: str, id: str):
 
         elif user_settings['original_results']:
             for stream in full_streams.get('streams', {}):
-                stream['name'] = stream['name'].replace('RD download', 'RD⏳')
-                stream['name'], stream['title'], stream['video_size'], stream['resolution'], stream['peers'] = format_stream(stream)
+                #stream['name'] = stream['name'].replace(f'{debrid_sign} download', f'{debrid_sign}⏳')
+                stream['name'], stream['title'], stream['video_size'], stream['resolution'], stream['peers'] = format_stream(stream, debrid_sign)
                 streams.append(stream)
 
         full_streams['streams'] = streams
@@ -144,6 +157,27 @@ async def get_stream(user_settings: str, addon_url: str, type: str, id: str):
 
     return json_response(full_streams)
 
+
+# Parse debrid url to debrid sign
+def parse_debrid_sign(addon_url):
+    if 'realdebrid' in addon_url:
+        return 'RD'
+    elif 'premiumize' in addon_url:   
+        return 'PM'
+    elif 'alldebrid' in addon_url:
+        return 'AD'
+    elif 'debridlink' in addon_url:   
+        return 'DL'
+    elif 'easydebrid' in addon_url:   
+        return 'ED'
+    elif 'offcloud' in addon_url:   
+        return 'OC'
+    elif 'torbox' in addon_url:
+        return 'TB'
+    elif 'putio' in addon_url:
+        return 'Putio'
+    else:
+        return ''
 
 # Extract Stream infomations
 def extract_stream_infos(stream: dict) -> tuple:
@@ -178,7 +212,7 @@ def extract_stream_infos(stream: dict) -> tuple:
 
 
 # Rename stream
-def format_stream(stream: dict) -> tuple:
+def format_stream(stream: dict, debrid_sign: str) -> tuple:
 
     name, resolution, folder, filename, peers, size, source, languages = extract_stream_infos(stream)
     raw_peers = peers # return integer for sorting
@@ -195,11 +229,11 @@ def format_stream(stream: dict) -> tuple:
     source = f"🔍 {source}\n" if source != None else ''
     languages = f"🔊 {languages}" if languages != None else ''
     
-    if 'RD+' in name:
-        name = f"[RD⚡] Torrentio {resolution}"
+    if f'{debrid_sign}+' in name:
+        name = f"[{debrid_sign}⚡] Torrentio {resolution}"
         title = folder + filename + size + '\n' + source + languages
-    elif 'RD⏳' in name:
-        name = f"[RD⏳] Torrentio {resolution}"
+    elif f'{debrid_sign} download' in name:
+        name = f"[{debrid_sign}⏳] Torrentio {resolution}"
         title = folder + filename + size + ' ' + peers + source + languages
     else:
         name = f"Torrentio {resolution}"
@@ -299,4 +333,4 @@ def parse_user_settings(user_settings: str) -> dict:
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host='0.0.0.0', port=9000)
+    uvicorn.run(app, host='0.0.0.0', port=int(os.environ.get("PORT", 9000)))

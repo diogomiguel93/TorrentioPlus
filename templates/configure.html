@@ -111,26 +111,24 @@ input, select, .dropdown-btn {
   padding: 0.5rem;
   box-sizing: border-box;
   z-index: 10;
-  text-align: left; /* allinea tutto a sinistra */
+  text-align: left;
 }
-
 .dropdown-content label {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 0.25rem;       /* spazio minimo tra checkbox e testo */
+  gap: 0.25rem;
   margin: 0.1rem 0;
-  white-space: nowrap; /* testo su una riga sola */
+  white-space: nowrap;
   font-weight: normal;
   padding: 0;
 }
-
 .dropdown-content input[type="checkbox"] {
-  margin: 0;           /* rimuove margine di default */
-  padding: 0;          /* rimuove padding di default */
-  flex-shrink: 0;      /* checkbox non si restringe */
-  width: auto;         /* larghezza minima della checkbox */
-  height: auto;        /* altezza minima */
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  width: auto;
+  height: auto;
 }
 .dropdown.open .dropdown-content { display: block; }
 </style>
@@ -183,8 +181,23 @@ input, select, .dropdown-btn {
     </div>
 
     <div class="form-group">
-      <label for="realDebrid">RealDebrid API Key</label>
-      <input type="text" id="realDebrid" placeholder="Inserisci la tua API Key">
+      <label for="debridService">Servizio Debrid</label>
+      <select id="debridService" name="debrid">
+        <option value="none" selected="">Nessuno</option>
+        <option value="realdebrid">RealDebrid</option>
+        <option value="premiumize">Premiumize</option>
+        <option value="alldebrid">AllDebrid</option>
+        <option value="debridlink">DebridLink</option>
+        <option value="easydebrid">EasyDebrid</option>
+        <option value="offcloud">Offcloud</option>
+        <option value="torbox">TorBox</option>
+        <option value="putio">Put.io</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="debridKeyContainer" style="display: none;">
+      <label for="debridKey">API Key</label>
+      <input type="text" id="debridKey" placeholder="Inserisci la tua API Key">
     </div>
 
     <div class="form-group">
@@ -212,15 +225,31 @@ document.addEventListener('click', (e) => {
   if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
 });
 
+const debridSelect = document.getElementById("debridService");
+const debridKeyContainer = document.getElementById("debridKeyContainer");
+const debridKeyInput = document.getElementById("debridKey");
+
+debridSelect.addEventListener("change", () => {
+  if (debridSelect.value) {
+    debridKeyContainer.style.display = "block";
+    debridKeyInput.placeholder = "API Key " + debridSelect.options[debridSelect.selectedIndex].text;
+  } else {
+    debridKeyContainer.style.display = "none";
+    debridKeyInput.value = "";
+  }
+});
+
 document.getElementById('config-form').addEventListener('submit', function(e){
   e.preventDefault();
   const serverUrl = window.location.origin;
   const showOriginal = document.getElementById('show-original').checked;
   const sort = document.getElementById('iSort').value;
   const limit = document.getElementById('iLimit').value;
-  const realDebrid = document.getElementById('realDebrid').value.trim();
   const providers = document.getElementById('providers').value;
   const language = document.getElementById('language').value;
+
+  const selectedDebrid = debridSelect.value;
+  const debridKey = debridKeyInput.value.trim();
 
   const qualityFilters = Array.from(dropdown.querySelectorAll('input:checked')).map(cb=>cb.value).join(',');
 
@@ -230,9 +259,9 @@ document.getElementById('config-form').addEventListener('submit', function(e){
   if(sort && sort!="quality") configParts.push("sort="+sort);
   if(qualityFilters) configParts.push("qualityfilter="+qualityFilters);
   if(limit) configParts.push("limit="+limit);
-  if(realDebrid) {
+  if(selectedDebrid && debridKey) {
     configParts.push("debridoptions=nocatalog");
-    configParts.push("realdebrid="+realDebrid);
+    configParts.push(selectedDebrid + "=" + debridKey);
   }
 
   let configString = configParts.join("|");
