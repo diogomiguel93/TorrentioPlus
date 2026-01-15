@@ -41,7 +41,6 @@ headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
     "Connection": "keep-alive",
     "Upgrade-Insecure-Requests": "1",
     "Sec-Fetch-Site": "none",
@@ -76,8 +75,8 @@ async def configure(request: Request):
 async def get_manifest(user_settings:str, addon_url: str):
     addon_url = decode_base64_url(addon_url)
     debrid_sign = parse_debrid_sign(addon_url)
-    async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.get(f"{addon_url}/manifest.json")
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.get(f"{addon_url}/manifest.json", headers=headers)
         manifest = response.json()
 
     if debrid_sign != '':
@@ -94,7 +93,7 @@ async def get_stream(user_settings: str, addon_url: str, type: str, id: str):
     user_settings = parse_user_settings(user_settings)
     debrid_sign = parse_debrid_sign(addon_url)
     async with httpx.AsyncClient(timeout=60) as client:
-        response = await client.get(f"{addon_url}/stream/{type}/{id}.json")
+        response = await client.get(f"{addon_url}/stream/{type}/{id}.json", headers=headers)
         full_streams = response.json()
         # Filter streams
         streams = []
@@ -162,15 +161,15 @@ async def get_stream(user_settings: str, addon_url: str, type: str, id: str):
 def parse_debrid_sign(addon_url):
     if 'realdebrid' in addon_url:
         return 'RD'
-    elif 'premiumize' in addon_url:   
+    elif 'premiumize' in addon_url:
         return 'PM'
     elif 'alldebrid' in addon_url:
         return 'AD'
-    elif 'debridlink' in addon_url:   
+    elif 'debridlink' in addon_url:
         return 'DL'
-    elif 'easydebrid' in addon_url:   
+    elif 'easydebrid' in addon_url:
         return 'ED'
-    elif 'offcloud' in addon_url:   
+    elif 'offcloud' in addon_url:
         return 'OC'
     elif 'torbox' in addon_url:
         return 'TB'
@@ -207,7 +206,7 @@ def extract_stream_infos(stream: dict) -> tuple:
         peers = int(match.group(3)) if match.group(3) else 0
         size = match.group(4)
         source = match.group(5).strip()
-        languages = match.group(6).strip() if match.group(6) else "Unknown"    
+        languages = match.group(6).strip() if match.group(6) else "Unknown"
         return name, resolution, folder, filename, peers, size, source, languages
 
 
@@ -228,7 +227,7 @@ def format_stream(stream: dict, debrid_sign: str) -> tuple:
     peers = f"👤 {peers}\n" if peers != None else ''
     source = f"🔍 {source}\n" if source != None else ''
     languages = f"🔊 {languages}" if languages != None else ''
-    
+
     if f'{debrid_sign}+' in name:
         name = f"[{debrid_sign}⚡] Torrentio {resolution}"
         title = folder + filename + size + '\n' + source + languages
@@ -250,7 +249,7 @@ async def is_cached(stream: dict) -> bool:
             return True
         else:
             return False
-        
+
 # Debrid delete torrents
 async def delete_torrents(delete_list: list, rd_key: str):
     async with httpx.AsyncClient(timeout=120, headers={'Authorization': f"Bearer {rd_key}"}) as client:
@@ -273,7 +272,7 @@ async def delete_downloads(delete_list: list, rd_key: str):
             for download in downlods:
                 if download['filename'] == filename:
                     await rd.delete_download(client, download['id'], 0)
-        
+
 
 # Addon URL parts extration
 def get_hash_from_url(url: str) -> str:
@@ -290,7 +289,7 @@ def get_realdebrid_key_from_url(url: str) -> str:
     url_parts = url.split('realdebrid=')
     if 'torrentio' in url:
         return url_parts[-1]
-    
+
 def get_sort_type_from_url(url: str) -> str:
     match = re.search(r'sort=([^|%]+)', url)
     if match:
