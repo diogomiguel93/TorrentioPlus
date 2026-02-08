@@ -4,6 +4,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from urllib.parse import unquote
 import httpx
+from curl_cffi.requests import AsyncSession
+from header_rotator import HeaderRotator
 import base64
 import asyncio
 import rd
@@ -76,8 +78,10 @@ async def configure(request: Request):
 async def get_manifest(user_settings:str, addon_url: str):
     addon_url = decode_base64_url(addon_url)
     debrid_sign = parse_debrid_sign(addon_url)
-    async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.get(f"{addon_url}/manifest.json")
+    rotator = HeaderRotator()
+    async with AsyncSession(timeout=10) as client:
+        response = await rotator.get(client, f"{addon_url}/manifest.json")
+        print(response.status_code)
         manifest = response.json()
 
     if debrid_sign != '':
@@ -93,8 +97,10 @@ async def get_stream(user_settings: str, addon_url: str, type: str, id: str):
     addon_url = decode_base64_url(addon_url)
     user_settings = parse_user_settings(user_settings)
     debrid_sign = parse_debrid_sign(addon_url)
-    async with httpx.AsyncClient(timeout=60) as client:
-        response = await client.get(f"{addon_url}/stream/{type}/{id}.json")
+    rd_key = get_realdebrid_key_from_url(addon_url)
+    rotator = HeaderRotator()
+    async with AsyncSession(timeout=60) as client:
+        response = await rotator.get(client, f"{addon_url}/stream/{type}/{id}.json")
         full_streams = response.json()
         # Filter streams
         streams = []
@@ -105,7 +111,8 @@ async def get_stream(user_settings: str, addon_url: str, type: str, id: str):
                 # Real debrid cache check
                 if debrid_sign == 'RD' and 'download' in stream['name']:
                     check_list.append(stream)
-                    if await is_cached(stream):
+                    file_id = get_fileid_from_url(stream['url'])
+                    if await rd.instant_availability(client, get_hash_from_url(stream['url']), file_id, rd_key):
                         stream['name'] = stream['name'].replace('RD download', 'RD+')
                         stream['name'], stream['title'], stream['video_size'], stream['resolution'], stream['peers'] = format_stream(stream, debrid_sign)
                         streams.append(stream)
@@ -151,7 +158,6 @@ async def get_stream(user_settings: str, addon_url: str, type: str, id: str):
         full_streams['streams'] = streams
 
         if check_list:
-            rd_key = get_realdebrid_key_from_url(addon_url)
             asyncio.create_task(delete_downloads(check_list, rd_key))
             asyncio.create_task(delete_torrents(check_list, rd_key))
 
@@ -242,15 +248,6 @@ def format_stream(stream: dict, debrid_sign: str) -> tuple:
     return name, title, raw_size, resolution, raw_peers
 
 
-# Debrid checker
-async def is_cached(stream: dict) -> bool:
-    async with httpx.AsyncClient(timeout=120, follow_redirects=False) as client:
-        response = await client.head(stream['url'])
-        if 'real-debrid' in response.headers['location']:
-            return True
-        else:
-            return False
-        
 # Debrid delete torrents
 async def delete_torrents(delete_list: list, rd_key: str):
     async with httpx.AsyncClient(timeout=120, headers={'Authorization': f"Bearer {rd_key}"}) as client:
@@ -297,6 +294,11 @@ def get_sort_type_from_url(url: str) -> str:
         return match.group(1)
     else:
         return 'qualityseeders'
+    
+def get_fileid_from_url(url: str) -> int:
+    url_parts = url.split('/')
+    if 'torrentio' in url:
+        return int(url_parts[8]) + 1
 
 
 # Url decoder

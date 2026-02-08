@@ -1,4 +1,6 @@
+curl-cffi
 httpx
 fastapi
 uvicorn
 jinja2
+fake-headers
