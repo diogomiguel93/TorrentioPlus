@@ -1,11 +1,8 @@
 import httpx
 import asyncio
-from aiolimiter import AsyncLimiter
 
 REQUEST_DELAY = 0.24
 api_url = 'https://api.real-debrid.com/rest/1.0/'
-
-limiter = AsyncLimiter(1, 1)
 
 # Torrents
 async def get_torrents(client: httpx.AsyncClient, delay=0):
