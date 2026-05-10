@@ -11,6 +11,9 @@ import asyncio
 import rd
 import re
 import os
+import json
+from google import genai
+from google.genai import types
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -154,6 +157,53 @@ async def get_stream(user_settings: str, addon_url: str, type: str, id: str):
                 #stream['name'] = stream['name'].replace(f'{debrid_sign} download', f'{debrid_sign}⏳')
                 stream['name'], stream['title'], stream['video_size'], stream['resolution'], stream['peers'] = format_stream(stream, debrid_sign)
                 streams.append(stream)
+
+        if user_settings.get('geminikey') and len(streams) > 0:
+            top_streams = streams[:10]
+            metadata_list = []
+            for i, s in enumerate(top_streams):
+                name, res, folder, filename, peers, size, source, languages = extract_stream_infos(s)
+                metadata_list.append({
+                    "index": i,
+                    "filename": filename,
+                    "size": size,
+                    "peers": peers,
+                    "resolution": res,
+                    "source": source
+                })
+
+            client = genai.Client(api_key=user_settings['geminikey'])
+
+            system_instruction = f"""You are an expert Stremio stream selector. Your goal is to evaluate the provided JSON list of top {len(top_streams)} streams and select the single absolute best one based on the following criteria:
+            1. Release Group Reputation: Favor high-quality encoders (e.g., QxR, Tigole, FraMeSToR) over heavily compressed ones (e.g., YIFY, YTS).
+            2. Logic Detective: Spot fakes. A 1.5GB file for a recent theatrical release tagged "Ac3 5.1" or "1080p" is likely a fake Cam/MD, discard it.
+            3. Context-Aware: Check the 'Target Device' (Current device: {user_settings['targetdevice']}). If "Mobile", discard massive 80GB remuxes to save bandwidth, favoring 1080p HEVC. If "4K TV", prioritize maximum bitrate and 4K resolution.
+
+            Return ONLY a JSON object containing the "winning_index" integer of the selected stream. Do not return any other text or markdown formatting.
+            Example: {{"winning_index": 2}}
+            """
+
+            try:
+                response = await client.aio.models.generate_content(
+                    model='gemini-3.1-flash-lite-preview',
+                    contents=json.dumps(metadata_list),
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                        temperature=0.0,
+                        response_mime_type="application/json"
+                    )
+                )
+
+                result = json.loads(response.text)
+                winning_index = result.get("winning_index", 0)
+                if 0 <= winning_index < len(top_streams):
+                    streams = [top_streams[winning_index]]
+                else:
+                    streams = [top_streams[0]]
+            except Exception as e:
+                print(f"GenAI Error: {e}")
+                streams = [top_streams[0]]
+
 
         full_streams['streams'] = streams
 
@@ -321,13 +371,19 @@ def mb_to_bytes(mb: float) -> int:
 def parse_user_settings(user_settings: str) -> dict:
     settings = user_settings.split('|')
     _user_settings = {
-        'original_results': False
+        'original_results': False,
+        'geminikey': None,
+        'targetdevice': 'Laptop'
     }
     for setting in settings:
         if 'oResult' in setting:
             setting = setting.split('=')[1]
             if setting == 'true':
                 _user_settings['original_results'] = True
+        elif 'geminikey=' in setting:
+            _user_settings['geminikey'] = setting.split('geminikey=')[1]
+        elif 'targetdevice=' in setting:
+            _user_settings['targetdevice'] = setting.split('targetdevice=')[1]
 
     return _user_settings
 

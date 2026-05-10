@@ -4,3 +4,4 @@ fastapi
 uvicorn
 jinja2
 fake-headers
+google-genai
